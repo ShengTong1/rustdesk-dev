@@ -149,6 +149,26 @@ pub fn ensure_default_security_settings() {
     {
         Config::set_permanent_password("Windows2026");
     }
+    // Custom build: first-run default server. Existing settings are never
+    // overwritten.
+    if Config::get_option(keys::OPTION_CUSTOM_RENDEZVOUS_SERVER).is_empty() {
+        Config::set_option(
+            keys::OPTION_CUSTOM_RENDEZVOUS_SERVER.to_owned(),
+            "175.178.6.197:21116".to_owned(),
+        );
+    }
+    if Config::get_option("relay-server").is_empty() {
+        Config::set_option(
+            "relay-server".to_owned(),
+            "175.178.6.197:21117".to_owned(),
+        );
+    }
+    if Config::get_option(keys::OPTION_KEY).is_empty() {
+        Config::set_option(
+            keys::OPTION_KEY.to_owned(),
+            "V7CWpg62Q557xRbHnL74h3ejqlSaQHOH6GAdYw5ULjU=".to_owned(),
+        );
+    }
 }
 
 pub fn global_clean() {}
