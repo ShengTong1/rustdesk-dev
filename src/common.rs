@@ -132,6 +132,25 @@ pub fn global_init() -> bool {
     true
 }
 
+/// First-run defaults for the security settings page: permanent-password
+/// verification with the initial password `Windows2026`. Existing settings
+/// are never overwritten.
+pub fn ensure_default_security_settings() {
+    if Config::get_option(keys::OPTION_VERIFICATION_METHOD).is_empty() {
+        Config::set_option(
+            keys::OPTION_VERIFICATION_METHOD.to_owned(),
+            "use-permanent-password".to_owned(),
+        );
+    }
+    let (_, salt) = Config::get_local_permanent_password_storage_and_salt();
+    if salt.is_empty()
+        && !Config::is_using_preset_password()
+        && !Config::is_disable_change_permanent_password()
+    {
+        Config::set_permanent_password("Windows2026");
+    }
+}
+
 pub fn global_clean() {}
 
 #[inline]

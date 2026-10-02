@@ -1141,18 +1141,19 @@ class _SafetyState extends State<_Safety> with AutomaticKeepAliveClientMixin {
     tmpWrapper() {
       String accessMode = bind.mainGetOptionSync(key: kOptionAccessMode);
       _AccessMode mode;
-      if (accessMode == 'full') {
-        mode = _AccessMode.full;
-      } else if (accessMode == 'view') {
+      if (accessMode == 'view') {
         mode = _AccessMode.view;
-      } else {
+      } else if (accessMode == 'custom') {
         mode = _AccessMode.custom;
+      } else {
+        // 未设置时默认完全访问
+        mode = _AccessMode.full;
       }
       String initialKey;
       bool? fakeValue;
       switch (mode) {
         case _AccessMode.custom:
-          initialKey = '';
+          initialKey = 'custom';
           fakeValue = null;
           break;
         case _AccessMode.full:
@@ -1168,7 +1169,7 @@ class _SafetyState extends State<_Safety> with AutomaticKeepAliveClientMixin {
       return _Card(title: 'Permissions', children: [
         ComboBox(
             keys: [
-              defaultOptionAccessMode,
+              'custom',
               'full',
               'view',
             ],
