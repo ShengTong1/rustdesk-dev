@@ -24,6 +24,8 @@ concurrency:
 
 jobs:
   update:
+    # Disabled in this private fork: no automatic weekly runs.
+    if: false
     runs-on: ubuntu-latest
     permissions:
       contents: write
