@@ -66,6 +66,8 @@ jobs:
   #       args: --locked
 
   build:
+    # Disabled in this private fork: Windows-only builds.
+    if: false
     name: ${{ matrix.job.target }} (${{ matrix.job.os }})
     runs-on: ${{ matrix.job.os }}
     strategy:
