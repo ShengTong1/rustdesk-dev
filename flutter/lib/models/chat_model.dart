@@ -352,7 +352,10 @@ class ChatModel with ChangeNotifier {
     }
     if (text.isEmpty) return;
     if (desktopType == DesktopType.cm) {
-      await showCmWindow();
+      // Custom build: the connection manager window is never shown.
+      if (!gFFI.serverModel.hideCm) {
+        await showCmWindow();
+      }
     }
     String? peerId;
     if (id == clientModeID) {
