@@ -1,0 +1,20 @@
+# Dedicated workflow for this private fork: builds the Windows x86_64 MSI only.
+# The compilation itself is shared with flutter-build.yml (the MSI packages the
+# built app); build-exe=false skips the portable exe, msi template and unsigned
+# tar so the only published artifact is the x86_64 MSI.
+name: Windows MSI Build
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  run-windows-msi-build:
+    uses: ./.github/workflows/flutter-build.yml
+    secrets: inherit
+    with:
+      upload-artifact: true
+      upload-tag: "master"
+      build-exe: false
