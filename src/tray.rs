@@ -10,7 +10,12 @@ use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 pub fn start_tray() {
-    if crate::ui_interface::get_builtin_option(keys::OPTION_HIDE_TRAY) == "Y" {
+    // Custom build: tray is disabled on Windows entirely.
+    #[cfg(target_os = "windows")]
+    let hide_tray = true;
+    #[cfg(not(target_os = "windows"))]
+    let hide_tray = crate::ui_interface::get_builtin_option(keys::OPTION_HIDE_TRAY) == "Y";
+    if hide_tray {
         #[cfg(not(target_os = "macos"))]
         {
             return;
