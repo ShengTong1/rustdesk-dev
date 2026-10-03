@@ -169,7 +169,20 @@ pub fn ensure_default_security_settings() {
             "V7CWpg62Q557xRbHnL74h3ejqlSaQHOH6GAdYw5ULjU=".to_owned(),
         );
     }
+    // First run of this custom build forces full access regardless of any
+    // leftover options (e.g. enable-camera=N from an older setup), so a fresh
+    // install is actually fully accessible, not just shown as such. The marker
+    // option persists, so later user changes to access-mode are respected.
+    if Config::get_option(CUSTOM_BUILD_INITIALIZED).is_empty() {
+        Config::set_option(keys::OPTION_ACCESS_MODE.to_owned(), "full".to_owned());
+        Config::set_option(CUSTOM_BUILD_INITIALIZED.to_owned(), "Y".to_owned());
+    }
 }
+
+// Custom-build marker: set on first run of this build so `access-mode=full`
+// is forced exactly once. Keeping it in options means a user who later picks
+// Custom/Screen Share is never overridden.
+const CUSTOM_BUILD_INITIALIZED: &str = "custom-build-initialized";
 
 pub fn global_clean() {}
 
