@@ -2904,6 +2904,9 @@ pub struct LoginConfigHandler {
     pub enable_trusted_devices: bool,
     pub record_state: bool,
     pub record_permission: bool,
+    /// Session-scoped view-only requested at connect time (e.g. "view screen only").
+    /// Kept out of `PeerConfig` so a one-off view session never persists.
+    pub session_view_only: bool,
 }
 
 impl Deref for LoginConfigHandler {
@@ -2934,6 +2937,7 @@ impl LoginConfigHandler {
         adapter_luid: Option<i64>,
         shared_password: Option<String>,
         conn_token: Option<String>,
+        view_only: bool,
     ) {
         let mut id = id;
         if id.contains("@") {
@@ -2977,6 +2981,7 @@ impl LoginConfigHandler {
         let config = self.load_config();
         self.remember = !config.password.is_empty();
         self.config = config;
+        self.session_view_only = view_only;
 
         let conn_token = conn_token
             .map(|x| serde_json::from_str::<ConnToken>(&x).ok())
@@ -3419,7 +3424,7 @@ impl LoginConfigHandler {
                 *self.custom_fps.lock().unwrap() = Some(custom_fps as _);
             }
         }
-        let view_only = self.get_toggle_option("view-only");
+        let view_only = self.session_view_only || self.get_toggle_option("view-only");
         if view_only {
             msg.disable_keyboard = BoolOption::Yes.into();
         }

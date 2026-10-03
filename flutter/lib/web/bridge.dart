@@ -147,6 +147,7 @@ class RustdeskImpl {
       required bool forceRelay,
       required String password,
       required bool isSharedPassword,
+      bool isViewOnly = false,
       String? connToken,
       dynamic hint}) {
     return js.context.callMethod('setByName', [
@@ -157,7 +158,8 @@ class RustdeskImpl {
         'is_shared_password': isSharedPassword,
         'isFileTransfer': isFileTransfer,
         'isViewCamera': isViewCamera,
-        'isTerminal': isTerminal
+        'isTerminal': isTerminal,
+        'is_view_only': isViewOnly
       })
     ]);
   }

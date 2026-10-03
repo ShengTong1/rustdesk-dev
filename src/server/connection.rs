@@ -6789,6 +6789,8 @@ pub struct AuthedConn {
     pub session_key: SessionKey,
     pub sender: mpsc::UnboundedSender<Data>,
     pub printer: bool,
+    /// Peer logs in with keyboard disabled (view-only), so it must not wake the display.
+    pub view_only: bool,
 }
 
 mod raii {
@@ -6841,12 +6843,18 @@ mod raii {
             let printer = conn_type == crate::server::AuthConnType::Remote
                 && crate::is_support_remote_print(&lr.version)
                 && lr.my_platform == hbb_common::whoami::Platform::Windows.to_string();
+            let view_only = lr
+                .option
+                .as_ref()
+                .map(|o| o.disable_keyboard.enum_value() == Ok(BoolOption::Yes))
+                .unwrap_or(false);
             AUTHED_CONNS.lock().unwrap().push(AuthedConn {
                 conn_id,
                 conn_type,
                 session_key,
                 sender,
                 printer,
+                view_only,
             });
             Self::check_wake_lock();
             use std::sync::Once;
@@ -6865,11 +6873,13 @@ mod raii {
 
         fn check_wake_lock() {
             let conn_count = AUTHED_CONNS.lock().unwrap().len();
+            // A view-only (keyboard-disabled) session must not wake the display,
+            // so exclude it from the remote count that drives ES_DISPLAY_REQUIRED.
             let remote_count = AUTHED_CONNS
                 .lock()
                 .unwrap()
                 .iter()
-                .filter(|c| c.conn_type == AuthConnType::Remote)
+                .filter(|c| c.conn_type == AuthConnType::Remote && !c.view_only)
                 .count();
             allow_err!(WAKELOCK_SENDER
                 .lock()
@@ -7931,6 +7941,7 @@ mod test {
             session_key,
             sender: mpsc::unbounded_channel().0,
             printer: false,
+            view_only: false,
         };
         let mine = key(7, "peer");
         let remote = AuthConnType::Remote;

@@ -4104,6 +4104,7 @@ class FFI {
     String id, {
     bool isFileTransfer = false,
     bool isViewCamera = false,
+    bool isViewOnly = false,
     bool isPortForward = false,
     bool isRdp = false,
     bool isTerminal = false,
@@ -4159,6 +4160,7 @@ class FFI {
         forceRelay: forceRelay ?? false,
         password: password ?? '',
         isSharedPassword: isSharedPassword ?? false,
+        isViewOnly: isViewOnly,
         connToken: connToken,
       );
     } else if (display != null) {

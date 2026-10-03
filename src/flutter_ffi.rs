@@ -158,6 +158,7 @@ pub fn session_add_sync(
     password: String,
     is_shared_password: bool,
     conn_token: Option<String>,
+    is_view_only: bool,
 ) -> SyncReturn<String> {
     let add_res = session_add(
         &session_id,
@@ -172,6 +173,7 @@ pub fn session_add_sync(
         password,
         is_shared_password,
         conn_token,
+        is_view_only,
     );
     // We can't put the remove call together with `std::env::var("IS_TERMINAL_ADMIN")`.
     // Because there are some `bail!` in `session_add()`, we must make sure `IS_TERMINAL_ADMIN` is removed at last.

@@ -794,6 +794,7 @@ class _DesktopHomePageState extends State<DesktopHomePage>
           call.arguments['id'],
           isFileTransfer: call.arguments['isFileTransfer'],
           isViewCamera: call.arguments['isViewCamera'],
+          isViewOnly: call.arguments['isViewOnly'] ?? false,
           isTerminal: call.arguments['isTerminal'],
           isTcpTunneling: call.arguments['isTcpTunneling'],
           isRDP: call.arguments['isRDP'],
