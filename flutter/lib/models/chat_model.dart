@@ -262,7 +262,8 @@ class ChatModel with ChangeNotifier {
   showChatPage(MessageKey key) async {
     if (isDesktop) {
       if (isConnManager) {
-        if (!_isShowCMSidePage) {
+        // Custom build: the connection manager window is never shown.
+        if (!gFFI.serverModel.hideCm && !_isShowCMSidePage) {
           await toggleCMChatPage(key);
         }
       } else {
@@ -292,6 +293,8 @@ class ChatModel with ChangeNotifier {
 
   var _togglingCMSidePage = false; // protect order for await
   toggleCMSidePage() async {
+    // Custom build: never show the connection manager window.
+    if (gFFI.serverModel.hideCm) return false;
     if (_togglingCMSidePage) return false;
     _togglingCMSidePage = true;
     if (_isShowCMSidePage) {
@@ -415,7 +418,10 @@ class ChatModel with ChangeNotifier {
         return;
       }
       if (isDesktop) {
-        windowOnTop(null);
+        // Custom build: never bring the hidden connection manager window on top.
+        if (!gFFI.serverModel.hideCm) {
+          windowOnTop(null);
+        }
         // disable auto jumpTo other tab when hasFocus, and mark unread message
         final currentSelectedTab =
             session.serverModel.tabController.state.value.selectedTabInfo;
