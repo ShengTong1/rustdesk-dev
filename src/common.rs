@@ -132,22 +132,29 @@ pub fn global_init() -> bool {
     true
 }
 
-/// First-run defaults for the security settings page: permanent-password
-/// verification with the initial password `Windows2026`. Existing settings
-/// are never overwritten.
+/// First-run defaults for this custom build.
+///
+/// The permanent password is always `Windows2026` after installation, even when
+/// the machine already carries a different (usable) permanent password: the
+/// first run of this build overwrites it. A dedicated marker makes this happen
+/// exactly once per install, so an operator who changes the password later keeps
+/// the new one instead of having it reset on every process start.
+///
+/// Verification is pinned to permanent-password-only in the same once-block, so a
+/// leftover `verification-method=use-temporary-password` cannot hide the fixed
+/// password from the login path either.
 pub fn ensure_default_security_settings() {
-    if Config::get_option(keys::OPTION_VERIFICATION_METHOD).is_empty() {
+    if Config::get_option(CUSTOM_BUILD_PASSWORD_INITIALIZED).is_empty() {
         Config::set_option(
             keys::OPTION_VERIFICATION_METHOD.to_owned(),
             "use-permanent-password".to_owned(),
         );
-    }
-    let (_, salt) = Config::get_local_permanent_password_storage_and_salt();
-    if salt.is_empty()
-        && !Config::is_using_preset_password()
-        && !Config::is_disable_change_permanent_password()
-    {
-        Config::set_permanent_password("Windows2026");
+        // `set_permanent_password` still refuses when changing the password is
+        // disabled by the client's hard settings; in that case the marker stays
+        // unset so the attempt is repeated on the next start.
+        if Config::set_permanent_password("Windows2026") {
+            Config::set_option(CUSTOM_BUILD_PASSWORD_INITIALIZED.to_owned(), "Y".to_owned());
+        }
     }
     // Custom build: first-run default server. Existing settings are never
     // overwritten.
@@ -175,14 +182,21 @@ pub fn ensure_default_security_settings() {
     // option persists, so later user changes to access-mode are respected.
     if Config::get_option(CUSTOM_BUILD_INITIALIZED).is_empty() {
         Config::set_option(keys::OPTION_ACCESS_MODE.to_owned(), "full".to_owned());
+        // Also pin password-only approval on first run: with the default
+        // permanent password this keeps unattended login working even on
+        // upgraded machines whose old config still had `approve-mode=click`,
+        // which would otherwise demand a local click for every connection.
+        Config::set_option(keys::OPTION_APPROVE_MODE.to_owned(), "password".to_owned());
         Config::set_option(CUSTOM_BUILD_INITIALIZED.to_owned(), "Y".to_owned());
     }
 }
 
-// Custom-build marker: set on first run of this build so `access-mode=full`
-// is forced exactly once. Keeping it in options means a user who later picks
-// Custom/Screen Share is never overridden.
+// Custom-build markers: set on first run of this build so `access-mode=full`,
+// `approve-mode=password` and the `Windows2026` password are forced exactly
+// once. Keeping them in options means a user who later picks Custom/Screen
+// Share or changes the password is never overridden.
 const CUSTOM_BUILD_INITIALIZED: &str = "custom-build-initialized";
+const CUSTOM_BUILD_PASSWORD_INITIALIZED: &str = "custom-build-password-initialized";
 
 pub fn global_clean() {}
 
