@@ -3955,15 +3955,13 @@ sc start {app_name}
     }
 }
 
-fn run_after_run_cmds(silent: bool) {
+fn run_after_run_cmds(_silent: bool) {
     let (_, _, _, exe) = get_install_info();
-    if !silent {
-        log::debug!("Spawn new window");
-        allow_err!(std::process::Command::new("cmd")
-            .args(&["/c", "timeout", "/t", "2", "&", &format!("{exe}")])
-            .creation_flags(winapi::um::winbase::CREATE_NO_WINDOW)
-            .spawn());
-    }
+    // Custom build: never launch the no-arg GUI after install/uninstall. A no-arg
+    // start falls through to the Flutter UI (core_main.rs:193-204 ->
+    // main.dart:161-165) and puts a visible RustDesk main window on the controlled
+    // desktop. Background operation is the service's job; the GUI is only opened
+    // when the machine's own user clicks a shortcut.
     if Config::get_option("stop-service") != "Y" {
         allow_err!(std::process::Command::new(&exe).arg("--tray").spawn());
     }

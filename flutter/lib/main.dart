@@ -133,6 +133,12 @@ Future<void> initEnv(String appType) async {
 void runMainApp(bool startService) async {
   // register uni links
   await initEnv(kAppTypeMain);
+  // Custom build: the connection manager is never shown, and remote-triggered
+  // events (incoming session, chat message, voice call) must not raise or
+  // minimize this window either. Without this, a main process running on the
+  // controlled machine pops to the front as soon as a peer connects
+  // (server_model.dart `_addTab` -> windowOnTop).
+  gFFI.serverModel.hideCm = true;
   checkUpdate();
   // trigger connection status updater
   await bind.mainCheckConnectStatus();
