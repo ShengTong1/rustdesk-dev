@@ -1223,6 +1223,14 @@ impl<T: InvokeUiSession> Remote<T> {
                 });
                 allow_err!(peer.send(&msg).await);
             }
+            Data::TakeCameraSnapshot(sid) => {
+                let mut msg = Message::new();
+                msg.set_camera_snapshot_request(CameraSnapshotRequest {
+                    sid,
+                    ..Default::default()
+                });
+                allow_err!(peer.send(&msg).await);
+            }
             _ => {}
         }
         true
@@ -2340,6 +2348,30 @@ impl<T: InvokeUiSession> Remote<T> {
                     crate::client::screenshot::set_screenshot(response.data);
                     self.handler
                         .handle_screenshot_resp(response.sid, response.msg);
+                }
+                Some(message::Union::CameraSnapshotResponse(response)) => {
+                    // Save the jpeg data to a temp file on the controlling side.
+                    // The controlled side never saves or displays the image.
+                    let mut path = "".to_owned();
+                    if !response.data.is_empty() {
+                        let ts = std::time::SystemTime::now()
+                            .duration_since(std::time::UNIX_EPOCH)
+                            .map(|d| d.as_secs())
+                            .unwrap_or(0);
+                        let file = std::env::temp_dir().join(format!("rustdesk-camera-{}.jpg", ts));
+                        match std::fs::write(&file, &response.data) {
+                            Ok(_) => path = file.to_string_lossy().to_string(),
+                            Err(e) => {
+                                log::error!("Failed to save camera snapshot, {}", e);
+                            }
+                        }
+                    }
+                    self.handler.handle_camera_snapshot_resp(
+                        response.sid,
+                        response.msg,
+                        path,
+                        response.camera_name,
+                    );
                 }
                 Some(message::Union::TerminalResponse(response)) => {
                     use base::message_proto::terminal_response::Union;

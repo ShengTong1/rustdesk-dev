@@ -785,5 +785,9 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
         ("Upgrade remote client", "升級遠端用戶端"),
         ("Are you sure you want to upgrade the remote client?", "確定要升級遠端用戶端嗎？"),
         ("The remote client will download and install the new version automatically after all sessions end.", "遠端用戶端將在所有連線結束後自動下載並安裝新版本。"),
+        ("Camera snapshot", "攝影機擷取"),
+        ("Taking camera snapshot", "正在擷取攝影機畫面"),
+        ("No camera found", "找不到攝影機"),
+        ("The image is only saved on the controlling side. Nothing is displayed or stored on the controlled side.", "圖片僅在控制端保存，被控端不會顯示或保存。"),
     ].iter().cloned().collect();
 }

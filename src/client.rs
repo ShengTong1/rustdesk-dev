@@ -5016,6 +5016,7 @@ pub enum Data {
     ResetDecoder(Option<usize>),
     RenameFile((i32, String, String, bool)),
     TakeScreenshot((i32, String)),
+    TakeCameraSnapshot(String),
 }
 
 pub async fn confirm_insecure_connection(

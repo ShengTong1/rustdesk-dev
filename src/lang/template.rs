@@ -784,6 +784,10 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
         ("View screen only", ""),
         ("Upgrade remote client", ""),
         ("Are you sure you want to upgrade the remote client?", ""),
-        ("The remote client will download and install the new version automatically after all sessions end.", "")
+        ("The remote client will download and install the new version automatically after all sessions end.", ""),
+        ("Camera snapshot", ""),
+        ("Taking camera snapshot", ""),
+        ("No camera found", ""),
+        ("The image is only saved on the controlling side. Nothing is displayed or stored on the controlled side.", "")
     ].iter().cloned().collect();
 }

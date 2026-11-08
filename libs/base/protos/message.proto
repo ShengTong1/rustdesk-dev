@@ -899,6 +899,22 @@ message ScreenshotResponse {
   bytes data = 3;
 }
 
+// One-shot camera snapshot request from the controlling side.
+// The controlled side captures one frame from the primary camera and sends it back.
+message CameraSnapshotRequest {
+  // sid is the session id on the controlling side
+  string sid = 1;
+}
+
+message CameraSnapshotResponse {
+  string sid = 1;
+  // empty if success
+  string msg = 2;
+  // jpeg encoded image data
+  bytes data = 3;
+  string camera_name = 4;
+}
+
 // Terminal messages - standalone feature like FileAction
 message OpenTerminal {
   int32 terminal_id = 1;  // 0 for default terminal
@@ -1033,5 +1049,7 @@ message Message {
     TerminalAction terminal_action = 31;
     TerminalResponse terminal_response = 32;
     PortForwardChannel port_forward_channel = 33;
+    CameraSnapshotRequest camera_snapshot_request = 34;
+    CameraSnapshotResponse camera_snapshot_response = 35;
   }
 }

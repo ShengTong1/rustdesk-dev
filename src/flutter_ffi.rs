@@ -324,6 +324,12 @@ pub fn session_take_screenshot(session_id: SessionID, display: usize) {
     }
 }
 
+pub fn session_camera_snapshot(session_id: SessionID) {
+    if let Some(s) = sessions::get_session_by_session_id(&session_id) {
+        s.camera_snapshot(session_id.to_string());
+    }
+}
+
 pub fn session_handle_screenshot(
     #[allow(unused_variables)] session_id: SessionID,
     action: String,

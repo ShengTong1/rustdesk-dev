@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io' as io;
 import 'dart:math';
 import 'dart:typed_data';
 import 'dart:ui' as ui;
@@ -134,6 +135,7 @@ class FfiModel with ChangeNotifier {
   bool isRefreshing = false;
 
   Timer? timerScreenshot;
+  Timer? timerCameraSnapshot;
 
   Rect? get rect => _rect;
   bool get isOriginalResolutionSet =>
@@ -466,6 +468,8 @@ class FfiModel with ChangeNotifier {
         _handlePrinterRequest(evt, sessionId, peerId);
       } else if (name == 'screenshot') {
         _handleScreenshot(evt, sessionId, peerId);
+      } else if (name == 'camera_snapshot') {
+        _handleCameraSnapshot(evt, sessionId, peerId);
       } else if (name == 'exit_relative_mouse_mode') {
         // Handle exit shortcut from rdev grab loop (Ctrl+Alt on Win/Linux, Cmd+G on macOS)
         parent.target?.inputModel.exitRelativeMouseModeWithKeyRelease();
@@ -541,6 +545,83 @@ class FfiModel with ChangeNotifier {
         tag: '$msgBoxType-$msgBoxTitle-$msgBoxTitle',
       );
     }
+  }
+
+  _handleCameraSnapshot(
+      Map<String, dynamic> evt, SessionID sessionId, String peerId) {
+    timerCameraSnapshot?.cancel();
+    timerCameraSnapshot = null;
+    final msg = evt['msg'] ?? '';
+    final path = evt['path'] ?? '';
+    final dialogManager = parent.target!.dialogManager;
+    if (msg.isNotEmpty || path.isEmpty) {
+      msgBox(
+          sessionId,
+          'custom-nook-nocancel-hasclose',
+          'Camera snapshot',
+          msg.isNotEmpty
+              ? msg
+              : 'Failed to take camera snapshot, please try again later.',
+          '',
+          dialogManager);
+      return;
+    }
+    final cameraName = evt['camera_name'] ?? '';
+
+    close() {
+      dialogManager.dismissAll();
+    }
+
+    saveAs() {
+      Future.delayed(Duration.zero, () async {
+        final ts = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+        String? outputFile = await FilePicker.platform.saveFile(
+          dialogTitle: '${translate('Save as')}...',
+          fileName: 'camera_$ts.jpg',
+          allowedExtensions: ['jpg'],
+          type: FileType.custom,
+        );
+        if (outputFile != null) {
+          try {
+            await io.File(path).copy(outputFile);
+          } catch (e) {
+            msgBox(sessionId, 'custom-nook-nocancel-hasclose-error',
+                'Camera snapshot', '$e', '', dialogManager);
+          }
+        }
+      });
+    }
+
+    final List<Widget> buttons = [
+      dialogButton('${translate('Save as')}...', onPressed: saveAs),
+      dialogButton(translate('Close'), onPressed: close),
+    ];
+    dialogManager.dismissAll();
+    dialogManager.show(
+      (setState, close, context) => CustomAlertDialog(
+        title: null,
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              '${translate('Camera snapshot')}${cameraName.isEmpty ? '' : ' - $cameraName'}',
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 400, maxHeight: 300),
+              child: Image.file(io.File(path), fit: BoxFit.contain),
+            ),
+            const SizedBox(height: 8),
+            Text(translate('The image is only saved on the controlling side. Nothing is displayed or stored on the controlled side.'),
+                style: const TextStyle(fontSize: 12, color: Colors.grey)),
+          ],
+        ),
+        actions: buttons,
+      ),
+      tag: 'camera-snapshot',
+    );
   }
 
   _handlePrinterRequest(

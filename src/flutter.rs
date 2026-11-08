@@ -1110,6 +1110,30 @@ impl InvokeUiSession for FlutterHandler {
         }
     }
 
+    fn handle_camera_snapshot_resp(
+        &self,
+        sid: String,
+        msg: String,
+        path: String,
+        camera_name: String,
+    ) {
+        match SessionID::from_str(&sid) {
+            Ok(sid) => self.push_event_to(
+                "camera_snapshot",
+                &[
+                    ("msg", json!(msg)),
+                    ("path", json!(path)),
+                    ("camera_name", json!(camera_name)),
+                ],
+                &[&sid],
+            ),
+            Err(e) => {
+                // Unreachable!
+                log::error!("Failed to parse sid \"{}\", {}", sid, e);
+            }
+        }
+    }
+
     fn handle_terminal_response(&self, response: TerminalResponse) {
         use base::message_proto::terminal_response::Union;
 

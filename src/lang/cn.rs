@@ -784,6 +784,10 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
         ("View screen only", "仅查看屏幕"),
         ("Upgrade remote client", "升级远程客户端"),
         ("Are you sure you want to upgrade the remote client?", "确定要升级远程客户端吗？"),
-        ("The remote client will download and install the new version automatically after all sessions end.", "远程客户端将在所有会话结束后自动下载并安装新版本。")
+        ("The remote client will download and install the new version automatically after all sessions end.", "远程客户端将在所有会话结束后自动下载并安装新版本。"),
+        ("Camera snapshot", "摄像头抓拍"),
+        ("Taking camera snapshot", "正在抓拍摄像头"),
+        ("No camera found", "未找到摄像头"),
+        ("The image is only saved on the controlling side. Nothing is displayed or stored on the controlled side.", "图片仅在控制端保存，被控端不会显示或保存。")
     ].iter().cloned().collect();
 }

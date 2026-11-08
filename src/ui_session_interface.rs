@@ -478,6 +478,10 @@ impl<T: InvokeUiSession> Session<T> {
         self.send(Data::TakeScreenshot((display, sid)));
     }
 
+    pub fn camera_snapshot(&self, sid: String) {
+        self.send(Data::TakeCameraSnapshot(sid));
+    }
+
     pub fn is_recording(&self) -> bool {
         self.lc.read().unwrap().record_state
     }
@@ -1761,6 +1765,15 @@ pub trait InvokeUiSession: Send + Sync + Clone + 'static + Sized + Default {
     fn update_empty_dirs(&self, _res: ReadEmptyDirsResponse) {}
     fn printer_request(&self, id: i32, path: String);
     fn handle_screenshot_resp(&self, sid: String, msg: String);
+    // `path` is empty if the snapshot failed, then `msg` contains the error message.
+    fn handle_camera_snapshot_resp(
+        &self,
+        _sid: String,
+        _msg: String,
+        _path: String,
+        _camera_name: String,
+    ) {
+    }
     fn handle_terminal_response(&self, response: TerminalResponse);
 }
 

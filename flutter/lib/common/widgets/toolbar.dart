@@ -645,6 +645,25 @@ List<TTextMenu> toolbarControls(BuildContext context, String id, FFI ffi) {
       ));
     }
   }
+  // Camera snapshot: one-shot capture from the peer's primary camera.
+  // Works in view-only mode too, so it is not gated by keyboard/viewOnly.
+  if (isDefaultConn &&
+      isDesktop &&
+      pi.platformAdditions['support_camera_snapshot'] == true) {
+    v.add(TTextMenu(
+      child: Text(ffi.ffiModel.timerCameraSnapshot != null
+          ? '${translate('Taking camera snapshot')} ...'
+          : translate('Camera snapshot')),
+      onPressed: ffi.ffiModel.timerCameraSnapshot != null
+          ? null
+          : () {
+              bind.sessionCameraSnapshot(sessionId: sessionId);
+              ffi.ffiModel.timerCameraSnapshot = Timer(Duration(seconds: 30), () {
+                ffi.ffiModel.timerCameraSnapshot = null;
+              });
+            },
+    ));
+  }
   // fingerprint
   if (!(isDesktop || isWebDesktop)) {
     v.add(TTextMenu(

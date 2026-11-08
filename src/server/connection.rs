@@ -75,6 +75,81 @@ use windows::Win32::Foundation::{CloseHandle, HANDLE};
 use crate::virtual_display_manager;
 pub type Sender = mpsc::UnboundedSender<(Instant, Arc<Message>)>;
 
+// Capture one frame from the primary camera and build the response message.
+// The frame is encoded as JPEG and sent back to the controlling side directly.
+// Nothing is displayed or saved on the controlled side.
+#[cfg(any(target_os = "windows", target_os = "linux"))]
+fn take_camera_snapshot(sid: String) -> Message {
+    let mut response = message::CameraSnapshotResponse::new();
+    response.sid = sid;
+    // Update the camera list first, so the primary camera's name is available.
+    if let Ok(displays) = camera::Cameras::all_info() {
+        if let Some(display) = displays.first() {
+            response.camera_name = display.name.clone();
+        }
+    }
+    if !camera::primary_camera_exists() {
+        response.msg = "No camera found".to_owned();
+    } else {
+        match take_camera_snapshot_frame() {
+            Ok((rgba, w, h)) => {
+                // Convert RGBA to RGB manually: JPEG encoding of Rgba8 is not
+                // supported by every minor version of the image crate.
+                let rgb: Vec<u8> = rgba
+                    .chunks_exact(4)
+                    .flat_map(|px| &px[..3])
+                    .copied()
+                    .collect();
+                let mut jpeg = Vec::new();
+                let encoder =
+                    image::codecs::jpeg::JpegEncoder::new_with_quality(&mut jpeg, 90);
+                match encoder.write_image(&rgb, w as _, h as _, image::ColorType::Rgb8) {
+                    Ok(_) => response.data = jpeg.into(),
+                    Err(e) => response.msg = format!("Failed to encode camera snapshot: {}", e),
+                }
+            }
+            Err(e) => {
+                response.msg = format!("Failed to capture camera: {}", e);
+            }
+        }
+    }
+    let mut msg_out = Message::new();
+    msg_out.set_camera_snapshot_response(response);
+    msg_out
+}
+
+#[cfg(any(target_os = "windows", target_os = "linux"))]
+fn take_camera_snapshot_frame() -> ResultType<(Vec<u8>, usize, usize)> {
+    use scrap::{Frame, TraitCapturer, TraitPixelBuffer};
+
+    let mut capturer = camera::Cameras::get_capturer(camera::PRIMARY_CAMERA_IDX)?;
+    let frame = capturer
+        .frame(std::time::Duration::from_millis(2000))
+        .map_err(|e| hbb_common::anyhow::anyhow!(e))?;
+    let Frame::PixelBuffer(pixbuf) = frame else {
+        bail!("Invalid camera frame");
+    };
+    let (w, h) = (pixbuf.width(), pixbuf.height());
+    if w == 0 || h == 0 {
+        bail!("Invalid camera resolution");
+    }
+    let data = pixbuf.data();
+    let row_len = w * 4;
+    let stride = pixbuf.stride().first().copied().unwrap_or(row_len);
+    let rgba = if stride == row_len {
+        data[..row_len * h].to_vec()
+    } else {
+        // The stride is larger than the row length, copy row by row.
+        let mut buf = Vec::with_capacity(row_len * h);
+        for y in 0..h {
+            let start = stride * y;
+            buf.extend_from_slice(&data[start..start + row_len]);
+        }
+        buf
+    };
+    Ok((rgba, w, h))
+}
+
 const FAILURE_IDX_ID_WHITELIST: usize = 2;
 // How long a rejection counts, so also how long a blocked address stays blocked. Longer
 // throttles enumeration harder; shorter limits collateral on whitelisted neighbours.
@@ -2005,6 +2080,7 @@ impl Connection {
         #[cfg(any(target_os = "windows", target_os = "linux"))]
         {
             platform_additions.insert("support_view_camera".into(), json!(true));
+            platform_additions.insert("support_camera_snapshot".into(), json!(true));
         }
 
         #[cfg(any(target_os = "linux", target_os = "windows", target_os = "macos"))]
@@ -4060,6 +4136,37 @@ impl Connection {
                             tx,
                         );
                         self.refresh_video_display(Some(request.display as usize));
+                    }
+                }
+                Some(message::Union::CameraSnapshotRequest(request)) => {
+                    #[cfg(any(target_os = "windows", target_os = "linux"))]
+                    {
+                        if Self::permission(keys::OPTION_ENABLE_CAMERA, &self.control_permissions) {
+                            if let Some(tx) = self.inner.tx.clone() {
+                                let sid = request.sid.clone();
+                                // The camera capture may block for a while, run it in a
+                                // separate thread to avoid blocking the connection.
+                                std::thread::spawn(move || {
+                                    let msg_out = take_camera_snapshot(sid);
+                                    if let Err(e) = tx.send((Instant::now(), Arc::new(msg_out))) {
+                                        log::error!("Failed to send camera snapshot, {}", e);
+                                    }
+                                });
+                            }
+                        } else {
+                            let mut response = message::CameraSnapshotResponse::new();
+                            response.sid = request.sid.clone();
+                            response.msg = "No permission of camera".to_owned();
+                            let mut msg_out = Message::new();
+                            msg_out.set_camera_snapshot_response(response);
+                            if let Some(tx) = self.inner.tx.clone() {
+                                allow_err!(tx.send((Instant::now(), Arc::new(msg_out))));
+                            }
+                        }
+                    }
+                    #[cfg(not(any(target_os = "windows", target_os = "linux")))]
+                    {
+                        let _ = request;
                     }
                 }
                 Some(message::Union::PortForwardChannel(ch)) => self.handle_port_forward_channel(ch),
