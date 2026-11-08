@@ -867,6 +867,9 @@ message Misc {
     // is rebuilt, and held again, the next time it is shown, before any connection names it
     // by id again, so the shape just selected is always there to give.
     uint64 request_cursor_data = 39;
+    // Ask the peer to check its update source for a new version now. The peer
+    // decides when the download and install actually run (idle machine, etc.).
+    bool request_software_update = 40;
   }
 }
 

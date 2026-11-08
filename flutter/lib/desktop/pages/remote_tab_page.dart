@@ -304,6 +304,22 @@ class _ConnectionTabPageState extends State<ConnectionTabPage> {
       ));
     }
 
+    if (perms['keyboard'] != false &&
+        !ffi.ffiModel.viewOnly &&
+        pi.platform == kPeerPlatformWindows) {
+      menu.add(MenuEntryButton<String>(
+        childBuilder: (TextStyle? style) => Text(
+          translate('Upgrade remote client'),
+          style: style,
+        ),
+        proc: () => showRequestSoftwareUpdate(
+            pi, peerId ?? '', sessionId, ffi.dialogManager),
+        padding: padding,
+        dismissOnClicked: true,
+        dismissCallback: cancelFunc,
+      ));
+    }
+
     if (perms['keyboard'] != false && !ffi.ffiModel.viewOnly) {
       menu.add(RemoteMenuEntry.insertLock(sessionId, padding,
           dismissFunc: cancelFunc));

@@ -577,6 +577,12 @@ impl<T: InvokeUiSession> Session<T> {
         self.send(Data::Message(msg));
     }
 
+    pub fn request_software_update(&self) {
+        let lc = self.lc.read().unwrap();
+        let msg = lc.request_software_update();
+        self.send(Data::Message(msg));
+    }
+
     pub fn get_audit_server(&self, typ: String) -> String {
         if LocalConfig::get_option("access_token").is_empty() {
             return "".to_owned();

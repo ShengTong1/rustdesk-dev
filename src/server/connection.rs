@@ -3899,6 +3899,17 @@ impl Connection {
                             }
                         }
                     }
+                    Some(misc::Union::RequestSoftwareUpdate(_)) => {
+                        #[cfg(not(any(target_os = "android", target_os = "ios")))]
+                        if self.keyboard {
+                            // Only a peer with keyboard permission (i.e. full control) may
+                            // trigger this. The updater thread still guards when the actual
+                            // download and install run (idle machine, min interval, etc.).
+                            if let Err(e) = crate::updater::manually_check_update() {
+                                log::error!("Failed to trigger software update: {}", e);
+                            }
+                        }
+                    }
                     #[cfg(windows)]
                     Some(misc::Union::ElevationRequest(r)) => match r.union {
                         Some(elevation_request::Union::Direct(_)) => {

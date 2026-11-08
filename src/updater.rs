@@ -89,7 +89,6 @@ pub fn start_auto_update() {
     let _sender = TX_MSG.lock().unwrap();
 }
 
-#[allow(dead_code)]
 pub fn manually_check_update() -> ResultType<()> {
     let sender = TX_MSG.lock().unwrap();
     sender.send(UpdateMsg::CheckUpdate)?;
@@ -147,10 +146,20 @@ fn start_auto_update_check_(rx_msg: Receiver<UpdateMsg>) {
 
     let mut last_check_time = Instant::now();
     let mut check_interval = DUR_ONE_DAY;
+    // A manual check (e.g. requested by the peer) may arrive while the minimum
+    // interval is not met or while a session is still active. Remember it and
+    // run it as a manual check once the regular guards allow the next check.
+    let mut pending_manual = false;
     loop {
         let recv_res = rx_msg.recv_timeout(check_interval);
         match &recv_res {
             Ok(UpdateMsg::CheckUpdate) | Err(_) => {
+                if recv_res.is_ok() {
+                    pending_manual = true;
+                    // A skipped manual request is retried within RETRY_INTERVAL
+                    // instead of waiting for the full check interval.
+                    check_interval = RETRY_INTERVAL;
+                }
                 if last_check_time.elapsed() < MIN_INTERVAL {
                     // log::debug!("Update check skipped due to minimum interval.");
                     continue;
@@ -160,7 +169,9 @@ fn start_auto_update_check_(rx_msg: Receiver<UpdateMsg>) {
                     check_interval = RETRY_INTERVAL;
                     continue;
                 }
-                if let Err(e) = check_update(matches!(recv_res, Ok(UpdateMsg::CheckUpdate))) {
+                let manual = pending_manual;
+                pending_manual = false;
+                if let Err(e) = check_update(manual) {
                     log::error!("Error checking for updates: {}", e);
                     check_interval = RETRY_INTERVAL;
                 } else {

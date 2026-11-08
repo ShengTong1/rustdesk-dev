@@ -1431,6 +1431,37 @@ void showRestartRemoteDevice(PeerInfo pi, String id, SessionID sessionId,
   if (res == true) bind.sessionRestartRemoteDevice(sessionId: sessionId);
 }
 
+void showRequestSoftwareUpdate(PeerInfo pi, String id, SessionID sessionId,
+    OverlayDialogManager dialogManager) async {
+  final res = await dialogManager
+      .show<bool>((setState, close, context) => CustomAlertDialog(
+            title: Row(children: [
+              Icon(Icons.warning_rounded, color: Colors.redAccent, size: 28),
+              Flexible(
+                  child: Text(translate("Upgrade remote client"))
+                      .paddingOnly(left: 10)),
+            ]),
+            content: Text(
+                "${translate('Are you sure you want to upgrade the remote client?')} \n${pi.username}@${pi.hostname}($id)\n${translate('The remote client will download and install the new version automatically after all sessions end.')}"),
+            actions: [
+              dialogButton(
+                "Cancel",
+                icon: Icon(Icons.close_rounded),
+                onPressed: close,
+                isOutline: true,
+              ),
+              dialogButton(
+                "OK",
+                icon: Icon(Icons.done_rounded),
+                onPressed: () => close(true),
+              ),
+            ],
+            onCancel: close,
+            onSubmit: () => close(true),
+          ));
+  if (res == true) bind.sessionRequestSoftwareUpdate(sessionId: sessionId);
+}
+
 showSetOSPassword(
   SessionID sessionId,
   bool login,

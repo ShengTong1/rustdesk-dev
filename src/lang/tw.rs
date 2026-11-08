@@ -782,5 +782,8 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
         ("relay-fallback-delay-tip", "已經建立的中繼連線會等待直連的 WebRTC 多久，超過這個時間就改用中繼。調大可以讓較慢的直連有更多機會勝出；調小則在無法直連的網路上更快回退到中繼。留空表示使用預設值 2.5 秒。"),
         ("To start a voice call, enable \"Audio capture\" on the \"Screen share\" page.", "若要開始語音通話，請在「僅分享螢幕畫面」頁面啟用「音訊錄製」。"),
         ("View screen only", ""),
+        ("Upgrade remote client", "升級遠端用戶端"),
+        ("Are you sure you want to upgrade the remote client?", "確定要升級遠端用戶端嗎？"),
+        ("The remote client will download and install the new version automatically after all sessions end.", "遠端用戶端將在所有連線結束後自動下載並安裝新版本。"),
     ].iter().cloned().collect();
 }

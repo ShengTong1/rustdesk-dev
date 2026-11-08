@@ -531,6 +531,19 @@ List<TTextMenu> toolbarControls(BuildContext context, String id, FFI ffi) {
               showRestartRemoteDevice(pi, id, sessionId, ffi.dialogManager)),
     );
   }
+  // upgrade remote client
+  if (isDefaultConn &&
+      isDesktop &&
+      !ffiModel.viewOnly &&
+      ffi.ffiModel.keyboard &&
+      pi.platform == kPeerPlatformWindows) {
+    v.add(
+      TTextMenu(
+          child: Text(translate('Upgrade remote client')),
+          onPressed: () => showRequestSoftwareUpdate(
+              pi, id, sessionId, ffi.dialogManager)),
+    );
+  }
   // insertLock
   if (isDefaultConn && !ffiModel.viewOnly && ffi.ffiModel.keyboard) {
     v.add(

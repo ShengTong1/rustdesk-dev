@@ -3939,6 +3939,14 @@ impl LoginConfigHandler {
         msg_out
     }
 
+    pub fn request_software_update(&self) -> Message {
+        let mut misc = Misc::new();
+        misc.set_request_software_update(true);
+        let mut msg_out = Message::new();
+        msg_out.set_misc(misc);
+        msg_out
+    }
+
     pub fn mark_restarting_remote_device(&mut self) {
         self.restarting_remote_device = true;
         self.restart_remote_device_at = Some(Instant::now());
