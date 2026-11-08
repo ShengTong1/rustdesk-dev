@@ -196,6 +196,8 @@ fn check_update(manually: bool) -> ResultType<()> {
     } else {
         let download_url = update_url.replace("tag", "download");
         let version = download_url.split('/').last().unwrap_or_default();
+        // The release tag may carry an optional `v` prefix, the asset name uses the bare version.
+        let version = version.strip_prefix('v').unwrap_or(version);
         #[cfg(target_os = "windows")]
         let download_url = if cfg!(feature = "flutter") {
             let Some(arch) = crate::platform::windows::release_arch_suffix() else {
@@ -376,8 +378,8 @@ pub fn get_update_download_file_from_url(url: &str) -> Option<PathBuf> {
     let tag = segments.next()?;
     let filename = segments.next()?;
 
-    if owner != "rustdesk"
-        || repo != "rustdesk"
+    if owner != "ShengTong1"
+        || repo != "rustdesk-dev"
         || releases != "releases"
         || download != "download"
         || tag.is_empty()
@@ -662,7 +664,7 @@ mod tests {
     #[test]
     fn update_download_file_accepts_expected_github_asset_urls() {
         let file = get_download_file_from_url(
-            "https://github.com/rustdesk/rustdesk/releases/download/1.4.0/rustdesk-1.4.0-x86_64.dmg",
+            "https://github.com/ShengTong1/rustdesk-dev/releases/download/1.4.0/rustdesk-1.4.0-x86_64.dmg",
         )
         .expect("valid GitHub release asset URL");
 
@@ -675,16 +677,18 @@ mod tests {
     #[test]
     fn update_download_file_rejects_untrusted_or_malformed_urls() {
         for url in [
-            "http://github.com/rustdesk/rustdesk/releases/download/1/rustdesk.exe",
+            "http://github.com/ShengTong1/rustdesk-dev/releases/download/1/rustdesk.exe",
             "https://example.com/rustdesk.exe",
             "https://github.com/other/project/releases/download/1/rustdesk.exe",
-            "https://github.com/rustdesk/rustdesk/releases/download/1/",
-            "https://github.com/rustdesk/rustdesk/releases/download/1/nested/rustdesk.exe",
-            "https://github.com/rustdesk/rustdesk/releases/download/1/C:rustdesk.exe",
-            "https://user@github.com/rustdesk/rustdesk/releases/download/1/rustdesk.exe",
-            "https://github.com:443/rustdesk/rustdesk/releases/download/1/rustdesk.exe",
-            "https://github.com/rustdesk/rustdesk/releases/download/1/rustdesk.exe?download=1",
-            "https://github.com/rustdesk/rustdesk/releases/download/1/rustdesk.exe#download",
+            // The official rustdesk repo is no longer a trusted update source for this fork.
+            "https://github.com/rustdesk/rustdesk/releases/download/1.4.0/rustdesk-1.4.0-x86_64.dmg",
+            "https://github.com/ShengTong1/rustdesk-dev/releases/download/1/",
+            "https://github.com/ShengTong1/rustdesk-dev/releases/download/1/nested/rustdesk.exe",
+            "https://github.com/ShengTong1/rustdesk-dev/releases/download/1/C:rustdesk.exe",
+            "https://user@github.com/ShengTong1/rustdesk-dev/releases/download/1/rustdesk.exe",
+            "https://github.com:443/ShengTong1/rustdesk-dev/releases/download/1/rustdesk.exe",
+            "https://github.com/ShengTong1/rustdesk-dev/releases/download/1/rustdesk.exe?download=1",
+            "https://github.com/ShengTong1/rustdesk-dev/releases/download/1/rustdesk.exe#download",
             "not a url",
         ] {
             assert!(get_download_file_from_url(url).is_none(), "{url}");

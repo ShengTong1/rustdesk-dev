@@ -2731,6 +2731,8 @@ pub fn main_get_common(key: String) -> String {
             }
         } else if key.starts_with("download-file-") {
             let _version = key.replace("download-file-", "");
+            // The release tag may carry an optional `v` prefix, the asset name uses the bare version.
+            let _version = _version.strip_prefix('v').unwrap_or(&_version);
             #[cfg(target_os = "windows")]
             return match (
                 crate::platform::windows::is_msi_installed(),
