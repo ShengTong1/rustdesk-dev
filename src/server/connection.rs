@@ -75,6 +75,22 @@ use windows::Win32::Foundation::{CloseHandle, HANDLE};
 use crate::virtual_display_manager;
 pub type Sender = mpsc::UnboundedSender<(Instant, Arc<Message>)>;
 
+// Only one camera snapshot capture is allowed at a time, so that repeated
+// requests do not spawn multiple threads competing for the camera device.
+#[cfg(any(target_os = "windows", target_os = "linux"))]
+static CAMERA_SNAPSHOT_RUNNING: std::sync::atomic::AtomicBool =
+    std::sync::atomic::AtomicBool::new(false);
+
+// Resets CAMERA_SNAPSHOT_RUNNING when dropped, even if the capture thread panics.
+#[cfg(any(target_os = "windows", target_os = "linux"))]
+struct CameraSnapshotGuard;
+#[cfg(any(target_os = "windows", target_os = "linux"))]
+impl Drop for CameraSnapshotGuard {
+    fn drop(&mut self) {
+        CAMERA_SNAPSHOT_RUNNING.store(false, std::sync::atomic::Ordering::SeqCst);
+    }
+}
+
 // Capture one frame from the primary camera and build the response message.
 // The frame is encoded as JPEG and sent back to the controlling side directly.
 // Nothing is displayed or saved on the controlled side.
@@ -136,6 +152,9 @@ fn take_camera_snapshot_frame() -> ResultType<(Vec<u8>, usize, usize)> {
     let data = pixbuf.data();
     let row_len = w * 4;
     let stride = pixbuf.stride().first().copied().unwrap_or(row_len);
+    if data.len() < row_len * h || stride < row_len {
+        bail!("Invalid camera frame size");
+    }
     let rgba = if stride == row_len {
         data[..row_len * h].to_vec()
     } else {
@@ -4142,16 +4161,34 @@ impl Connection {
                     #[cfg(any(target_os = "windows", target_os = "linux"))]
                     {
                         if Self::permission(keys::OPTION_ENABLE_CAMERA, &self.control_permissions) {
-                            if let Some(tx) = self.inner.tx.clone() {
+                            if CAMERA_SNAPSHOT_RUNNING.swap(
+                                true,
+                                std::sync::atomic::Ordering::SeqCst,
+                            ) {
+                                // A capture is already running, tell the peer instead of
+                                // spawning another thread competing for the camera.
+                                let mut response = message::CameraSnapshotResponse::new();
+                                response.sid = request.sid.clone();
+                                response.msg = "Camera snapshot is already in progress".to_owned();
+                                let mut msg_out = Message::new();
+                                msg_out.set_camera_snapshot_response(response);
+                                if let Some(tx) = self.inner.tx.clone() {
+                                    allow_err!(tx.send((Instant::now(), Arc::new(msg_out))));
+                                }
+                            } else if let Some(tx) = self.inner.tx.clone() {
                                 let sid = request.sid.clone();
                                 // The camera capture may block for a while, run it in a
                                 // separate thread to avoid blocking the connection.
                                 std::thread::spawn(move || {
+                                    let _guard = CameraSnapshotGuard;
                                     let msg_out = take_camera_snapshot(sid);
                                     if let Err(e) = tx.send((Instant::now(), Arc::new(msg_out))) {
                                         log::error!("Failed to send camera snapshot, {}", e);
                                     }
                                 });
+                            } else {
+                                CAMERA_SNAPSHOT_RUNNING
+                                    .store(false, std::sync::atomic::Ordering::SeqCst);
                             }
                         } else {
                             let mut response = message::CameraSnapshotResponse::new();
