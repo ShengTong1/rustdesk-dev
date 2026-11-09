@@ -8,10 +8,11 @@
 		-->
 
 		<!-- These are the actual properties that get used in conditions to determine whether to
-				 install start menu shortcuts or the printer. Shortcut properties default to NOT install;
+				 install start menu shortcuts or the printer. Desktop shortcuts default to NOT install;
+				 start menu shortcuts default to install;
 				 PRINTER defaults to not install. The CREATE* properties below update shortcut
 				 properties from command line, bundle, or registry values. -->
-		<Property Id="STARTMENUSHORTCUTS" Value="0" Secure="yes"></Property>
+		<Property Id="STARTMENUSHORTCUTS" Value="1" Secure="yes"></Property>
 		<Property Id="DESKTOPSHORTCUTS" Value="0" Secure="yes"></Property>
 		<Property Id="STARTUPSHORTCUTS" Value="1" Secure="yes"></Property>
 		<Property Id="PRINTER" Secure="yes"></Property>
@@ -78,10 +79,10 @@
 		<SetProperty Id="STARTMENUSHORTCUTS" Value="" After="RestoreSavedStartMenuShortcutsValue" Sequence="first" Condition="CREATESTARTMENUSHORTCUTS AND NOT (CREATESTARTMENUSHORTCUTS = 1 OR CREATESTARTMENUSHORTCUTS = &quot;Y&quot; OR CREATESTARTMENUSHORTCUTS = &quot;y&quot;)" />
 		<SetProperty Id="DESKTOPSHORTCUTS" Value="" After="RestoreSavedDesktopShortcutsValue" Sequence="first" Condition="CREATEDESKTOPSHORTCUTS AND NOT (CREATEDESKTOPSHORTCUTS = 1 OR CREATEDESKTOPSHORTCUTS = &quot;Y&quot; OR CREATEDESKTOPSHORTCUTS = &quot;y&quot;)" />
 
-		<!-- Custom build: shortcuts default to NOT created. A registry value of 1 persisted by a
-			 previous install (user opted in via installer UI or command line) re-enables them, so
-			 upgrades keep the user's original choice instead of silently removing shortcuts. -->
-		<SetProperty Action="SetStartMenuShortcutsValueEnabled" Id="STARTMENUSHORTCUTS" Value="1" After="RestoreSavedStartMenuShortcutsValue" Sequence="first" Condition="CREATESTARTMENUSHORTCUTS AND (CREATESTARTMENUSHORTCUTS = 1 OR CREATESTARTMENUSHORTCUTS = &quot;Y&quot; OR CREATESTARTMENUSHORTCUTS = &quot;y&quot;)" />
+		<!-- Custom build: desktop shortcut defaults to NOT created; start menu shortcuts default
+			 to created (kept so the app can still be launched from the Start menu). A registry
+			 value of 1 persisted by a previous install (user opted in via installer UI or command
+			 line) re-enables desktop shortcut creation, so upgrades keep the user's choice. -->
 		<SetProperty Action="SetDesktopShortcutsValueEnabled" Id="DESKTOPSHORTCUTS" Value="1" After="RestoreSavedDesktopShortcutsValue" Sequence="first" Condition="CREATEDESKTOPSHORTCUTS AND (CREATEDESKTOPSHORTCUTS = 1 OR CREATEDESKTOPSHORTCUTS = &quot;Y&quot; OR CREATEDESKTOPSHORTCUTS = &quot;y&quot;)" />
 		<!-- PRINTER defaults to empty now, so a saved or command-line INSTALLPRINTER=1
 				 must explicitly enable the main PRINTER property. Non-truthy INSTALLPRINTER
