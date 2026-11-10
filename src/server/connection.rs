@@ -96,7 +96,7 @@ impl Drop for CameraSnapshotGuard {
 // Nothing is displayed or saved on the controlled side.
 #[cfg(any(target_os = "windows", target_os = "linux"))]
 fn take_camera_snapshot(sid: String) -> Message {
-    let mut response = message::CameraSnapshotResponse::new();
+    let mut response = CameraSnapshotResponse::new();
     response.sid = sid;
     // Update the camera list first, so the primary camera's name is available.
     if let Ok(displays) = camera::Cameras::all_info() {
@@ -119,7 +119,13 @@ fn take_camera_snapshot(sid: String) -> Message {
                 let mut jpeg = Vec::new();
                 let encoder =
                     image::codecs::jpeg::JpegEncoder::new_with_quality(&mut jpeg, 90);
-                match encoder.write_image(&rgb, w as _, h as _, image::ColorType::Rgb8) {
+                match image::ImageEncoder::write_image(
+                    encoder,
+                    &rgb,
+                    w as _,
+                    h as _,
+                    image::ColorType::Rgb8,
+                ) {
                     Ok(_) => response.data = jpeg.into(),
                     Err(e) => response.msg = format!("Failed to encode camera snapshot: {}", e),
                 }
@@ -4167,7 +4173,7 @@ impl Connection {
                             ) {
                                 // A capture is already running, tell the peer instead of
                                 // spawning another thread competing for the camera.
-                                let mut response = message::CameraSnapshotResponse::new();
+                                let mut response = CameraSnapshotResponse::new();
                                 response.sid = request.sid.clone();
                                 response.msg = "Camera snapshot is already in progress".to_owned();
                                 let mut msg_out = Message::new();
@@ -4191,7 +4197,7 @@ impl Connection {
                                     .store(false, std::sync::atomic::Ordering::SeqCst);
                             }
                         } else {
-                            let mut response = message::CameraSnapshotResponse::new();
+                            let mut response = CameraSnapshotResponse::new();
                             response.sid = request.sid.clone();
                             response.msg = "No permission of camera".to_owned();
                             let mut msg_out = Message::new();
