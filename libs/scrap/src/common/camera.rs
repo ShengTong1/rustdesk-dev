@@ -122,6 +122,16 @@ impl Cameras {
         }
     }
 
+    // Camera name lookup that does NOT open the device: opening a camera just
+    // to read its name and then opening it again right away for the capture
+    // makes some Windows webcams crash on the second open.
+    pub fn primary_name() -> Option<String> {
+        match query(ApiBackend::Auto) {
+            Ok(cameras) => cameras.first().map(|info| info.human_name().clone()),
+            _ => None,
+        }
+    }
+
     fn create_camera(index: &CameraIndex) -> ResultType<Camera> {
         let format_type = if cfg!(target_os = "linux") {
             RequestedFormatType::None
@@ -166,6 +176,10 @@ impl Cameras {
 
     pub fn exists(_index: usize) -> bool {
         false
+    }
+
+    pub fn primary_name() -> Option<String> {
+        None
     }
 
     pub fn get_camera_resolution(_index: usize) -> ResultType<Resolution> {

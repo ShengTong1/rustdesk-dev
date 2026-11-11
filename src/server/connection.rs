@@ -98,17 +98,26 @@ impl Drop for CameraSnapshotGuard {
 fn take_camera_snapshot(sid: String) -> Message {
     let mut response = CameraSnapshotResponse::new();
     response.sid = sid;
-    // Update the camera list first, so the primary camera's name is available.
-    if let Ok(displays) = camera::Cameras::all_info() {
-        if let Some(display) = displays.first() {
-            response.camera_name = display.name.clone();
-        }
+    // Get the camera name from the query result only: Cameras::all_info()
+    // opens every camera just to read resolutions, and opening the same
+    // device twice in a row (here and in the capture below) makes some
+    // Windows webcams crash. The name is only shown to the controller.
+    if let Some(name) = camera::Cameras::primary_name() {
+        response.camera_name = name;
     }
     if !camera::primary_camera_exists() {
         response.msg = "No camera found".to_owned();
     } else {
-        match take_camera_snapshot_frame() {
-            Ok((rgba, w, h)) => {
+        // The native camera grab can block for a long time on some devices,
+        // or hang forever, so run it in a worker thread and bound the wait.
+        // On timeout the worker is abandoned; it only ever releases the
+        // device and never touches the connection.
+        let (tx, rx) = std_mpsc::channel();
+        std::thread::spawn(move || {
+            let _ = tx.send(take_camera_snapshot_frame());
+        });
+        match rx.recv_timeout(Duration::from_secs(6)) {
+            Ok(Ok((rgba, w, h))) => {
                 // Convert RGBA to RGB manually: JPEG encoding of Rgba8 is not
                 // supported by every minor version of the image crate.
                 let rgb: Vec<u8> = rgba
@@ -130,8 +139,11 @@ fn take_camera_snapshot(sid: String) -> Message {
                     Err(e) => response.msg = format!("Failed to encode camera snapshot: {}", e),
                 }
             }
-            Err(e) => {
+            Ok(Err(e)) => {
                 response.msg = format!("Failed to capture camera: {}", e);
+            }
+            Err(_) => {
+                response.msg = "Camera capture timed out".to_owned();
             }
         }
     }
