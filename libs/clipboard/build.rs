@@ -13,7 +13,11 @@ fn build_c_impl() {
         if build.get_compiler().is_like_msvc() {
             build.define("WIN32", "");
             // build.define("_AMD64_", "");
-            build.flag("-Z7");
+            // Fork deviation: -Z7 removed (same reason as libs/virtual_display/dylib):
+            // cc-rs's /Brepro + -Z7 makes cl.exe write the command line into the
+            // object's debug record; a very large build environment overflows the
+            // record and cl fails with D8050. Not needed for release builds.
+            // build.flag("-Z7");
             build.flag("-GR-");
             // build.flag("-std:c++11");
         } else {
