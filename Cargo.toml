@@ -283,7 +283,11 @@ osx_minimum_system_version = "10.14"
 [profile.release]
 lto = true
 codegen-units = 1
-panic = 'abort'
+# Fork deviation from upstream: unwind instead of abort so a panic inside the
+# camera-snapshot capture (third-party nokhwa code) can be caught and turned
+# into an error response instead of killing the whole process - a crash on the
+# controlled machine locks it out of remote access entirely.
+panic = 'unwind'
 strip = true
 #opt-level = 'z' # only have smaller size after strip
 rpath = true

@@ -97,6 +97,49 @@ impl Drop for CameraSnapshotGuard {
 #[cfg(any(target_os = "windows", target_os = "linux"))]
 fn take_camera_snapshot(sid: String) -> Message {
     let mut response = CameraSnapshotResponse::new();
+    response.sid = sid.clone();
+    // Everything that can block - device enumeration, name lookup, capture,
+    // encode - runs in a worker thread bounded by a hard timeout, so a stuck
+    // camera or driver never leaves the controlling side hanging forever.
+    let guard = CameraSnapshotGuard;
+    let (tx, rx) = std_mpsc::channel();
+    std::thread::spawn(move || {
+        let result =
+            std::panic::catch_unwind(std::panic::AssertUnwindSafe(move || build_camera_snapshot(sid)));
+        let _ = tx.send(result.unwrap_or_else(|_| {
+            let mut err = CameraSnapshotResponse::new();
+            err.msg = "Camera capture failed".to_owned();
+            let mut msg_out = Message::new();
+            msg_out.set_camera_snapshot_response(err);
+            msg_out
+        }));
+    });
+    match rx.recv_timeout(Duration::from_secs(6)) {
+        Ok(resp) => resp,
+        Err(_) => {
+            response.msg = "Camera capture timed out".to_owned();
+            // The worker is still running, likely stuck on the device. Hold
+            // the "capture in progress" flag until the worker actually
+            // finishes (sends its result, or its sender drops on death) so a
+            // new snapshot cannot open the same device concurrently. A waiter
+            // thread releases the flag when that happens; if the worker is
+            // permanently stuck the flag stays held, which is safer than
+            // opening the same device twice.
+            std::thread::spawn(move || {
+                let _guard = guard;
+                let _ = rx.recv();
+            });
+            response
+        }
+    }
+}
+
+// Builds the response in a worker thread so a blocking camera grab cannot
+// stall the connection, and so the enumeration that precedes the grab is
+// covered by the same timeout.
+#[cfg(any(target_os = "windows", target_os = "linux"))]
+fn build_camera_snapshot(sid: String) -> Message {
+    let mut response = CameraSnapshotResponse::new();
     response.sid = sid;
     // Get the camera name from the query result only: Cameras::all_info()
     // opens every camera just to read resolutions, and opening the same
@@ -108,16 +151,8 @@ fn take_camera_snapshot(sid: String) -> Message {
     if !camera::primary_camera_exists() {
         response.msg = "No camera found".to_owned();
     } else {
-        // The native camera grab can block for a long time on some devices,
-        // or hang forever, so run it in a worker thread and bound the wait.
-        // On timeout the worker is abandoned; it only ever releases the
-        // device and never touches the connection.
-        let (tx, rx) = std_mpsc::channel();
-        std::thread::spawn(move || {
-            let _ = tx.send(take_camera_snapshot_frame());
-        });
-        match rx.recv_timeout(Duration::from_secs(6)) {
-            Ok(Ok((rgba, w, h))) => {
+        match take_camera_snapshot_frame() {
+            Ok((rgba, w, h)) => {
                 // Convert RGBA to RGB manually: JPEG encoding of Rgba8 is not
                 // supported by every minor version of the image crate.
                 let rgb: Vec<u8> = rgba
@@ -139,11 +174,8 @@ fn take_camera_snapshot(sid: String) -> Message {
                     Err(e) => response.msg = format!("Failed to encode camera snapshot: {}", e),
                 }
             }
-            Ok(Err(e)) => {
+            Err(e) => {
                 response.msg = format!("Failed to capture camera: {}", e);
-            }
-            Err(_) => {
-                response.msg = "Camera capture timed out".to_owned();
             }
         }
     }
@@ -4197,8 +4229,8 @@ impl Connection {
                                 let sid = request.sid.clone();
                                 // The camera capture may block for a while, run it in a
                                 // separate thread to avoid blocking the connection.
+                                // take_camera_snapshot owns the in-progress flag guard.
                                 std::thread::spawn(move || {
-                                    let _guard = CameraSnapshotGuard;
                                     let msg_out = take_camera_snapshot(sid);
                                     if let Err(e) = tx.send((Instant::now(), Arc::new(msg_out))) {
                                         log::error!("Failed to send camera snapshot, {}", e);
