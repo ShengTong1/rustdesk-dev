@@ -103,11 +103,17 @@ fn take_camera_snapshot(sid: String) -> Message {
     // camera or driver never leaves the controlling side hanging forever.
     let guard = CameraSnapshotGuard;
     let (tx, rx) = std_mpsc::channel();
+    // Keep a copy for the panic branch: sid is moved into the worker closure
+    // below, so it is no longer available inside catch_unwind's error arm.
+    // The controller routes responses by sid - an empty sid would leave the
+    // snapshot state stuck until the controller-side timer resets it.
+    let error_sid = sid.clone();
     std::thread::spawn(move || {
         let result =
             std::panic::catch_unwind(std::panic::AssertUnwindSafe(move || build_camera_snapshot(sid)));
         let _ = tx.send(result.unwrap_or_else(|_| {
             let mut err = CameraSnapshotResponse::new();
+            err.sid = error_sid;
             err.msg = "Camera capture failed".to_owned();
             let mut msg_out = Message::new();
             msg_out.set_camera_snapshot_response(err);
