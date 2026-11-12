@@ -135,7 +135,9 @@ fn take_camera_snapshot(sid: String) -> Message {
                 let _guard = guard;
                 let _ = rx.recv();
             });
-            response
+            let mut msg_out = Message::new();
+            msg_out.set_camera_snapshot_response(response);
+            msg_out
         }
     }
 }
@@ -192,7 +194,7 @@ fn build_camera_snapshot(sid: String) -> Message {
 
 #[cfg(any(target_os = "windows", target_os = "linux"))]
 fn take_camera_snapshot_frame() -> ResultType<(Vec<u8>, usize, usize)> {
-    use scrap::{Frame, TraitCapturer, TraitPixelBuffer};
+    use scrap::{Frame, TraitPixelBuffer};
 
     let mut capturer = camera::Cameras::get_capturer(camera::PRIMARY_CAMERA_IDX)?;
     let frame = capturer
